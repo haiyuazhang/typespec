@@ -4,3 +4,5 @@ import "./main.tsp";
 using Azure.ClientGenerator.Core;
 using Azure.Storage.Tables;
 
+
+@@clientName(Document, "CarrotEatingDocument");
