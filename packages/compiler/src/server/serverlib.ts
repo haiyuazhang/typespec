@@ -178,8 +178,8 @@ export function createServer(
   });
   let currentDiagnosticIndex = new Map<number, Diagnostic>();
   let diagnosticIdCounter = 0;
-  const resolvedCodefixCache = new Map<string, Promise<CodeFix[]>>();
-  const resolvedCodefixMap = new Map<string, CodeFix>();
+  const resolvedCodefixCache = new Map<string, Promise<CodeFix[]>>(); // AI suggestion result cache - declared
+  const resolvedCodefixMap = new Map<string, CodeFix>(); // resolved codefix lookup for resolveCodeAction
 
   let workspaceFolders: ServerWorkspaceFolder[] = [];
   let isInitialized = false;
@@ -795,7 +795,7 @@ export function createServer(
     // Atomically swap the diagnostic index so that in-flight code action resolves
     // referencing old diagnostic IDs can still find their entries until new diagnostics are sent.
     currentDiagnosticIndex = newDiagnosticIndex;
-    resolvedCodefixCache.clear();
+    resolvedCodefixCache.clear(); // AI suggestion result cache - cleared on recompilation
     resolvedCodefixMap.clear();
 
     for (const [document, diagnostics] of diagnosticMap) {
@@ -1316,6 +1316,7 @@ export function createServer(
         if (fix.resolveCodefixes) {
           const cacheKey = `${vsDiag.data?.id}:${fix.id}`;
           if (!resolvedCodefixCache.has(cacheKey)) {
+            // AI suggestion result cache - checked and populated (Promise cached immediately to prevent concurrent duplicates)
             resolvedCodefixCache.set(cacheKey, fix.resolveCodefixes().catch(() => []));
           }
 
