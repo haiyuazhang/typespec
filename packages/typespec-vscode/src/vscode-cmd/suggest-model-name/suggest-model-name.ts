@@ -5,7 +5,7 @@ import logger from "../../log/logger.js";
 const SINGLE_WORD_DIAGNOSTIC_CODE = "@typespec/http-client-csharp/single-word-model-name";
 const MODEL_FAMILY = "copilot-gpt-4.1";
 
-type RenameApproach = "direct" | "clientName";
+type RenameApproach = "direct" | "clientName" | "updateClientName";
 
 interface ModelNameContext {
   modelName: string;
@@ -251,7 +251,7 @@ ${ctx.modelSource}
 \`\`\``;
 
   try {
-    // Try multiple model families — availability varies by Copilot version
+    // Try known model families first, then fall back to any available model
     const families = ["gpt-4o", "gpt-4", "gpt-3.5-turbo", "copilot-gpt-4.1"];
     let response: string | undefined;
 
@@ -268,6 +268,30 @@ ${ctx.modelSource}
         if (response) break;
       } catch {
         // Try next family
+      }
+    }
+
+    // Fallback: discover any available model
+    if (!response) {
+      try {
+        const allModels = await vscode.lm.selectChatModels({});
+        if (allModels && allModels.length > 0) {
+          logger.info(
+            `Available LM models: ${allModels.map((m) => `${m.name} (family: ${m.family})`).join(", ")}`,
+          );
+          const model = allModels[0];
+          logger.info(`Falling back to discovered model: ${model.name} (family: ${model.family})`);
+          response = await sendLmChatRequest(
+            [{ role: "user", message: prompt }],
+            model.family,
+            undefined,
+            `suggest-model-name-${ctx.modelName}`,
+          );
+        } else {
+          logger.warning("No LM models available at all");
+        }
+      } catch (e) {
+        logger.error("Failed to discover available LM models", [e]);
       }
     }
 
